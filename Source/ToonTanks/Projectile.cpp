@@ -4,6 +4,7 @@
 #include "Projectile.h"
 #include "GameFramework/DamageType.h"
 #include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -14,9 +15,12 @@ AProjectile::AProjectile()
 	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Projectile"));
 	RootComponent = ProjectileMesh;
 
-	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Pojectile Movement"));
-	ProjectileMovement->InitialSpeed = 1300.f;
-	ProjectileMovement->MaxSpeed = 1300.f;
+	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Projectile Movement"));
+	ProjectileMovementComponent->InitialSpeed = 1300.f;
+	ProjectileMovementComponent->MaxSpeed = 1300.f;
+
+	Trail = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("Projectile Trail"));
+	Trail->SetupAttachment(ProjectileMesh);
 }
 
 // Called when the game starts or when spawned
@@ -38,7 +42,10 @@ void AProjectile::OnHit(UPrimitiveComponent *HitComp, AActor *OtherActor, UPrimi
 {
 	auto MyOwner = GetOwner();
 	if (MyOwner == nullptr)
+	{
+		Destroy();
 		return;
+	}
 	
 	auto MyOwnerInstigator = MyOwner->GetInstigatorController();
 	auto DamageTypeClass = UDamageType::StaticClass();
@@ -46,6 +53,9 @@ void AProjectile::OnHit(UPrimitiveComponent *HitComp, AActor *OtherActor, UPrimi
 	if (OtherActor && OtherActor != this && OtherActor != MyOwner)
 	{
 		UGameplayStatics::ApplyDamage(OtherActor, Damage, MyOwnerInstigator, this, DamageTypeClass);
-		Destroy();
+		if (HitParticles)
+			UGameplayStatics::SpawnEmitterAtLocation(this, HitParticles, GetActorLocation(), GetActorRotation());
 	}
+	Destroy();
+
 }
